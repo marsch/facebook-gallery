@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:fb="http://www.facebook.com/2008/fbml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Facebook Gallery</title>
+    <script type="text/javascript" src="gal/jquery.js"></script>
+    <script type="text/javascript" src="gal/gallery.js"></script> 
+    <link href="galleria.css" rel="stylesheet" type="text/css" media="screen"> 
+  </head>
+  <body>
+    <h1>Facebook Gallery</h1>
+    <div class="demo"> 
+      <p class="nav"><a href="#" onclick="$.galleria.prev(); return false;">&laquo; previous</a> | <a href="#" onclick="showUserPhotos();return false;">shuffle</a> | <a href="#" onclick="$.galleria.next(); return false;">next &raquo;</a></p> 
+      <ul class="gallery_demo"></ul> 
+      <div id="main_image"></div>  
+    </div>
+    <p><fb:login-button autologoutlink="true" perms="user_photos,friends_photos"></fb:login-button></p>
+    <p><fb:like></fb:like></p> 
+    <div id="fb-root"></div>
+    <script> 
+function showUserPhotos () {
+  var session = FB.getSession();
+  if (session != null) { 
+      FB.api({
+        method: "fql.query",
+        query: "SELECT aid FROM album WHERE owner="+session.uid+" OR owner IN (SELECT uid2 FROM friend WHERE uid1="+session.uid+") LIMIT 40"
+      }, function (response) { 
+        //return;   
+        var albumIDs = [];
+        for (var i in response) {
+          albumIDs.push(response[i].aid)
+        } 
+        FB.api({ 
+          method: "fql.query",
+          query: "SELECT src,src_big,caption FROM photo WHERE aid IN ('"+albumIDs.join("','")+"')"
+        }, function (photos) { 
+                  for(
+                    var j, x, i = photos.length; i;
+                    j = parseInt(Math.random() * i),
+                    x = photos[--i], photos[i] = photos[j], photos[j] = x
+                  );
+                  photos = photos.slice(0,9);
+                  $('ul.gallery_demo').empty();
+                  $('#main_image').empty(); 
+                  
+                  for (var x in photos) {
+                      var eli = document.createElement("li");
+                      var img = document.createElement("img");
+                      img.src = photos[x].src_big;
+                      img.title = (photos[x].caption !== undefined)?photos[x].caption:" ";
+                      eli.appendChild(img);
+                      $('ul.gallery_demo').append(eli); 
+                  }
+                  $('ul.gallery_demo').galleria({  
+                      //data_source: imageData,
+                      history   : true, // activates the history object for bookmarking, back-button etc.
+                      clickNext : true, // helper for making the image clickable
+                      insert    : '#main_image', // the containing selector for our main image
+                      height: 200,
+                      autoplay: true,
+                      image_crop: true,
+                      onImage   : function(image,caption,thumb) { // let's add some image effects for demonstration purposes
+                        // fade in the image & caption
+                        if(! ($.browser.mozilla && navigator.appVersion.indexOf("Win")!=-1) ) { // FF/Win fades large images terribly slow
+                          image.css('display','none').fadeIn(1000);
+                        }
+                        caption.css('display','none').fadeIn(1000);
+                        var _li = thumb.parents('li');
+                        _li.siblings().children('img.selected').fadeTo(500,0.3);
+                        thumb.fadeTo('fast',1).addClass('selected');
+                        image.attr('title','Next image >>'); 
+                      },
+                      onThumb : function(thumb) { // thumbnail effects goes here
+                        var _li = thumb.parents('li');
+                        var _fadeTo = _li.is('.active') ? '1' : '0.3';
+                        thumb.css({display:'none',opacity:_fadeTo}).fadeIn(1500);
+                        thumb.hover(
+                          function() { thumb.fadeTo('fast',1); },
+                          function() { _li.not('.active').children('img').fadeTo('fast',0.3); } // don't fade out if the parent is active
+                        )
+                      }
+                  }); 
+            });
+          });
+        }
+      }
+      window.fbAsyncInit = function() {
+        FB.init({appId: '174882549205248', status: true, cookie: true,
+                 xfbml: true});
+        showUserPhotos(); 
+      };
+      (function() {
+        var e = document.createElement('script');
+        e.type = 'text/javascript';
+        e.src = document.location.protocol +
+          '//connect.facebook.net/de_DE/all.js';
+        e.async = true;
+        document.getElementById('fb-root').appendChild(e);
+      }());
+    </script>
+  </body>
+</html>
